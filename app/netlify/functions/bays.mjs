@@ -1,4 +1,5 @@
 import { getStore } from "@netlify/blobs";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 const BAYS = ["01", "02", "03", "04", "05", "06"];
 const BODIES = ["coupe", "sedan", "hatch", "suv", "truck"];
@@ -34,21 +35,30 @@ const publicView = (car, key) => {
   return { ...rest, mine: !!key && owner === key };
 };
 
+const digest = (v) => createHash("sha256").update(String(v)).digest();
+function checkAdmin(req) {
+  const secret = (globalThis.Netlify?.env?.get("ADMIN_KEY") ?? process.env.ADMIN_KEY ?? "").trim();
+  const given = req.headers.get("x-admin-key") || "";
+  if (!secret || !given) return false;
+  return timingSafeEqual(digest(secret), digest(given));
+}
+
 export default async (req, context) => {
   const store = getStore({ name: "garage-bays", consistency: "strong" });
   const seg = new URL(req.url).pathname.split('/').filter(Boolean);
   const no = seg[0] === 'api' && seg[1] === 'bays' ? seg[2] : undefined;
   const key = clean(req.headers.get("x-driver-key"), 64);
+  const admin = checkAdmin(req);
 
   if (req.method === "GET" && !no) {
     const entries = await Promise.all(BAYS.map((b) => store.get(b, { type: "json" })));
     const cars = {};
     BAYS.forEach((b, i) => { if (entries[i]) cars[b] = publicView(entries[i], key); });
-    return json({ cars });
+    return json({ cars, admin });
   }
 
   if (!BAYS.includes(no)) return json({ error: "That bay does not exist." }, 404);
-  if (key.length < 16) return json({ error: "Missing driver key." }, 400);
+  if (key.length < 16 && !admin) return json({ error: "Missing driver key." }, 400);
 
   if (req.method === "PUT") {
     let body;
@@ -72,7 +82,7 @@ export default async (req, context) => {
   if (req.method === "DELETE") {
     const existing = await store.get(no, { type: "json" });
     if (!existing) return json({ ok: true });
-    if (existing.key !== key) return json({ error: "Only the driver can pull this car out." }, 403);
+    if (existing.key !== key && !admin) return json({ error: "Only the driver can pull this car out." }, 403);
     await store.delete(no);
     return json({ ok: true });
   }

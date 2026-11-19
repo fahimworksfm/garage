@@ -116,6 +116,15 @@ button,input,select{font:inherit;color:inherit}
 .hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 104px);transform:translateX(-50%);display:flex;gap:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap;pointer-events:none}
 
 /* tuning drawer */
+.chipbtn{border:0;color:var(--ink);cursor:pointer;min-height:44px}
+.chipbtn:hover{background:rgba(20,24,29,.92)}
+.chipbtn[aria-pressed="true"]{background:var(--hazard);color:var(--hazard-ink);box-shadow:none}
+.modal{position:absolute;inset:0;z-index:40;background:rgba(3,4,6,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px}
+.mcard{width:min(400px,100%);background:var(--panel-solid);box-shadow:inset 0 0 0 1px var(--line-strong);padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+.mcard h2{margin:0;font-family:var(--f-display);font-size:38px;line-height:.85;letter-spacing:.03em}
+.mcard p{margin:0;color:var(--ink-dim);font-size:14px;line-height:1.5}
+.mcard .acts{display:flex;gap:10px}.mcard .acts .btn{flex:1}
+.adminflag{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--hazard)}
 .drawer{position:absolute;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel-solid);box-shadow:-30px 0 60px rgba(0,0,0,.5),inset 1px 0 0 var(--line);display:flex;flex-direction:column;transform:translateX(102%);transition:transform .45s cubic-bezier(.2,.8,.2,1);z-index:20}
 .drawer.open{transform:none}
 .drawer header{padding:calc(env(safe-area-inset-top,0px) + 20px) max(20px,env(safe-area-inset-right,0px)) 16px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line)}
@@ -194,6 +203,7 @@ button,input,select{font:inherit;color:inherit}
       <span class="chip"><span class="dot" id="liveDot"></span><span id="liveTxt">Connecting</span></span>
       <span class="chip cap"><span id="countTxt">0 / 6</span>&nbsp;parked</span>
       <span class="chip hide-sm" id="meChip" hidden></span>
+      <button class="chip chipbtn" id="adminBtn" type="button" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span id="adminTxt">Admin</span></button>
     </div>
   </div>
 
@@ -258,6 +268,15 @@ button,input,select{font:inherit;color:inherit}
     </footer>
   </aside>
 
+  <div class="modal" id="adminModal" hidden role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <form class="mcard" id="adminForm" novalidate>
+      <h2 id="adminTitle">ADMIN MODE</h2>
+      <p>Enter the admin password to remove any car from the garage. It stays unlocked on this device until you lock it.</p>
+      <label class="field" for="admin-pass">Admin password<input class="in" id="admin-pass" type="password" autocomplete="current-password"></label>
+      <span class="err" id="e-admin" hidden>That password isn't right.</span>
+      <div class="acts"><button class="btn ghost" type="button" id="adminCancel">Cancel</button><button class="btn" type="submit" id="adminGo">Unlock</button></div>
+    </form>
+  </div>
   <div class="toast" id="toast" role="status"></div>
 </div>
 
@@ -282,8 +301,11 @@ const driverKey = (() => {
   const make = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
   try { let k = localStorage.getItem('garage.key'); if (!k) { k = make(); localStorage.setItem('garage.key', k); } return k; } catch (e) { return make(); }
 })();
+let adminKey = ''; try { adminKey = localStorage.getItem('garage.admin') || ''; } catch (e) {}
 async function api(method, path, body) {
-  const res = await fetch('/api/bays' + (path || ''), { method, headers: { 'content-type': 'application/json', 'x-driver-key': driverKey }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  const headers = { 'content-type': 'application/json', 'x-driver-key': driverKey };
+  if (adminKey) headers['x-admin-key'] = adminKey;
+  const res = await fetch('/api/bays' + (path || ''), { method, headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
   let data = {}; try { data = await res.json(); } catch (e) {}
   if (!res.ok) { const err = new Error(data.error || 'Something went wrong. Try again.'); err.status = res.status; throw err; }
   return data;
@@ -687,6 +709,7 @@ function renderSpec(){
   const finName = (FINISHES.find(f => f[0] === c.finish) || ['', 'Gloss'])[1];
   const glowName = (GLOWS.find(g => g[0] === c.glow) || ['', 'Off'])[1];
   const canManage = mine(c);
+  const adminOnly = !canManage && state.admin;
   spec.innerHTML = `
     <div><div class="make">${esc(c.make)}${c.year ? ' · ' + esc(c.year) : ''}</div><div class="model">${esc(c.model)}</div></div>
     <dl>
@@ -699,6 +722,9 @@ function renderSpec(){
     ${canManage ? (state.confirmLeave
       ? `<div class="confirm"><span>Pull ${esc(c.model)} out of bay ${no}? The bay will be free for anyone.</span><div class="acts"><button class="btn ghost" type="button" data-act="keep">Keep it</button><button class="btn danger" type="button" data-act="leave-yes">Pull out</button></div></div>`
       : `<div class="acts"><button class="btn ghost" type="button" data-act="edit">Tune</button><button class="btn danger" type="button" data-act="leave">Pull out</button></div>`)
+      : adminOnly ? (state.confirmLeave
+      ? `<div class="confirm"><span class="adminflag">Admin</span><span>Remove ${esc(nameOf(c))}'s ${esc(c.model)} from bay ${no}? They will have to park again.</span><div class="acts"><button class="btn ghost" type="button" data-act="keep">Keep it</button><button class="btn danger" type="button" data-act="leave-yes">Remove</button></div></div>`
+      : `<div class="acts"><button class="btn danger" type="button" data-act="leave">Remove car · Admin</button></div>`)
       : ''}
   `;
   spec.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => {
@@ -806,13 +832,14 @@ async function save(){
 
 async function leave(){
   const no = BAYS[state.cur];
+  const wasMine = mine(state.cars[no]);
   const wrap = $('carwrap');
   state.confirmLeave = false;
   const finish = async () => {
     delete state.cars[no];
     state.lastDrawn = null;
     render(false);
-    toast('Bay ' + no + ' is free');
+    toast(wasMine ? 'Bay ' + no + ' is free' : 'Removed from bay ' + no);
     state.busy = true;
     try { await api('DELETE', '/' + no); } catch (e) { toast(e.message); }
     finally { state.busy = false; refresh(); }
@@ -830,6 +857,7 @@ $('cancelBtn').addEventListener('click', closeDrawer);
 $('saveBtn').addEventListener('click', save);
 $('form').addEventListener('submit', e => { e.preventDefault(); save(); });
 document.addEventListener('keydown', e => {
+  if (!$('adminModal').hidden) return;
   const typing = /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '');
   if (e.key === 'Escape' && state.draft) { closeDrawer(); return; }
   if (typing) { if (e.key === 'Enter') { e.preventDefault(); save(); } return; }
@@ -853,6 +881,8 @@ async function refresh() {
   if (state.busy) return;
   try {
     const r = await api('GET');
+    if (adminKey && !r.admin) { adminKey = ''; try { localStorage.removeItem('garage.admin'); } catch (e) {} }
+    if (state.admin !== !!r.admin) { state.admin = !!r.admin; syncAdmin(); if (!state.draft) renderSpec(); }
     if (state.busy) return;
     const next = r.cars || {};
     const curNo = BAYS[state.cur];
@@ -867,6 +897,32 @@ async function refresh() {
     $('liveDot').classList.add('off'); $('liveTxt').textContent = fails > 2 ? 'Offline' : 'Reconnecting';
   }
 }
+function syncAdmin(){
+  $('adminBtn').setAttribute('aria-pressed', state.admin ? 'true' : 'false');
+  $('adminTxt').textContent = state.admin ? 'Admin on' : 'Admin';
+  $('adminBtn').setAttribute('aria-label', state.admin ? 'Admin mode is on. Lock it' : 'Unlock admin mode');
+}
+function closeAdmin(){ $('adminModal').hidden = true; $('admin-pass').value = ''; $('e-admin').hidden = true; $('admin-pass').classList.remove('bad'); $('adminBtn').focus(); }
+$('adminBtn').addEventListener('click', () => {
+  if (state.admin) { adminKey = ''; try { localStorage.removeItem('garage.admin'); } catch (e) {} state.admin = false; state.confirmLeave = false; syncAdmin(); renderSpec(); toast('Admin mode off'); return; }
+  $('adminModal').hidden = false; setTimeout(() => $('admin-pass').focus(), 50);
+});
+$('adminCancel').addEventListener('click', closeAdmin);
+$('adminModal').addEventListener('click', e => { if (e.target === $('adminModal')) closeAdmin(); });
+$('adminModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeAdmin(); } });
+$('adminForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const pass = $('admin-pass').value;
+  if (!pass) { $('e-admin').hidden = false; $('admin-pass').classList.add('bad'); return; }
+  $('adminGo').disabled = true;
+  const prevKey = adminKey; adminKey = pass;
+  try {
+    const r = await api('GET');
+    if (r.admin) { try { localStorage.setItem('garage.admin', pass); } catch (er) {} state.admin = true; syncAdmin(); renderSpec(); closeAdmin(); toast('Admin mode on'); }
+    else { adminKey = prevKey; $('e-admin').hidden = false; $('admin-pass').classList.add('bad'); $('admin-pass').select(); }
+  } catch (er) { adminKey = prevKey; toast(er.message); }
+  finally { $('adminGo').disabled = false; }
+});
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, 4000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
