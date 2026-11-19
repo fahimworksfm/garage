@@ -28,6 +28,11 @@ button,input,select{font:inherit;color:inherit}
 .stage{position:absolute;inset:0;overflow:hidden;background:#000}
 .bg{position:absolute;inset:-2%;width:104%;height:104%;object-fit:cover;object-position:50% 46%;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform 1.4s cubic-bezier(.2,.8,.2,1)}
 .bg.on{opacity:1;transform:scale(1)}
+.bg.b2{filter:sepia(.35) saturate(1.5) hue-rotate(-8deg) brightness(.92)}
+.levels{flex:none;display:flex;flex-direction:column;gap:4px}
+.lvl{width:56px;height:36px;border:0;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;font-family:var(--f-display);font-size:24px;line-height:1;padding-top:3px;color:var(--ink-dim)}
+.lvl[aria-pressed="true"]{background:var(--ink);color:var(--void);box-shadow:none}
+.lvl .cnt{display:none}
 .shade{position:absolute;inset:0;pointer-events:none;background:
   radial-gradient(120% 80% at 50% 45%,transparent 40%,rgba(0,0,0,.55) 100%),
   linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 18%,transparent 62%,rgba(0,0,0,.82) 100%)}
@@ -168,7 +173,8 @@ button,input,select{font:inherit;color:inherit}
   .nav{display:none}
   .bays{grid-template-columns:repeat(6,96px)}
   .brand .name{font-size:28px}
-  .chip.hide-sm{display:none}
+  .chip.hide-sm,.hide-sm{display:none}
+  .app,.stage{overscroll-behavior:none}
   .brand .sub{display:none}
   .brand .mark{width:38px;height:38px;font-size:24px}
   .chip{min-height:32px;padding:0 10px;font-size:11px;letter-spacing:.08em}
@@ -189,6 +195,12 @@ button,input,select{font:inherit;color:inherit}
     <img class="bg" alt="" src="bays/bay04.jpg" data-bay="04">
     <img class="bg" alt="" src="bays/bay05.jpg" data-bay="05">
     <img class="bg" alt="" src="bays/bay06.jpg" data-bay="06">
+    <img class="bg b2" alt="" src="bays/bay07.jpg" data-bay="07" loading="lazy">
+    <img class="bg b2" alt="" src="bays/bay08.jpg" data-bay="08" loading="lazy">
+    <img class="bg b2" alt="" src="bays/bay09.jpg" data-bay="09" loading="lazy">
+    <img class="bg b2" alt="" src="bays/bay10.jpg" data-bay="10" loading="lazy">
+    <img class="bg b2" alt="" src="bays/bay11.jpg" data-bay="11" loading="lazy">
+    <img class="bg b2" alt="" src="bays/bay12.jpg" data-bay="12" loading="lazy">
     <div class="flicker"></div>
     <div class="carwrap" id="carwrap" role="img" aria-label=""></div>
     <div class="shade"></div>
@@ -197,11 +209,11 @@ button,input,select{font:inherit;color:inherit}
   <div class="hud-top">
     <div class="brand">
       <div class="mark" aria-hidden="true">G</div>
-      <div><div class="name">GARAGE</div><div class="sub">Level B1 · 6 bays</div></div>
+      <div><div class="name">GARAGE</div><div class="sub" id="levelSub">Level B1 · 12 bays</div></div>
     </div>
     <div class="chips">
       <span class="chip"><span class="dot" id="liveDot"></span><span id="liveTxt">Connecting</span></span>
-      <span class="chip cap"><span id="countTxt">0 / 6</span>&nbsp;parked</span>
+      <span class="chip cap"><span id="countTxt">0 / 12</span><span class="hide-sm">&nbsp;parked</span></span>
       <span class="chip hide-sm" id="meChip" hidden></span>
       <button class="chip chipbtn" id="adminBtn" type="button" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span id="adminTxt">Admin</span></button>
     </div>
@@ -221,6 +233,7 @@ button,input,select{font:inherit;color:inherit}
 
   <nav class="dock" aria-label="Bays">
     <button class="nav" id="prev" type="button" aria-label="Previous bay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="levels" role="group" aria-label="Level"><button class="lvl" type="button" data-lvl="0" aria-pressed="true" aria-label="Level B1">B1</button><button class="lvl" type="button" data-lvl="1" aria-pressed="false" aria-label="Level B2">B2</button></div>
     <div class="bays" id="bays"></div>
     <button class="nav" id="next" type="button" aria-label="Next bay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
   </nav>
@@ -285,7 +298,9 @@ button,input,select{font:inherit;color:inherit}
 </html>
 <script>
 (() => {
-const BAYS = ['01','02','03','04','05','06'];
+const BAYS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+const PER_LEVEL = 6;
+const levelOf = (i) => Math.floor(i / PER_LEVEL);
 const PAINTS = [
   ['Jet black','#0D0F12'],['Arctic white','#E9ECEF'],['Gunmetal','#3E454D'],['Silver','#A9B0B8'],
   ['Race red','#C0161B'],['Sunset orange','#E8601C'],['Hazard yellow','#F2C200'],['Lime','#7BC043'],
@@ -646,7 +661,11 @@ const mine = (c) => !!c && !!c.mine;
 function renderBays(){
   const host = $('bays');
   host.innerHTML = '';
+  const lv = levelOf(state.cur);
+  document.querySelectorAll('.lvl').forEach(b => b.setAttribute('aria-pressed', +b.dataset.lvl === lv ? 'true' : 'false'));
+  $('levelSub').textContent = 'Level B' + (lv + 1) + ' · ' + BAYS.length + ' bays';
   BAYS.forEach((no,i) => {
+    if (levelOf(i) !== lv) return;
     const c = state.cars[no];
     const b = document.createElement('button');
     b.type = 'button';
@@ -659,7 +678,7 @@ function renderBays(){
     host.appendChild(b);
   });
   const n = BAYS.filter(no => state.cars[no]).length;
-  $('countTxt').textContent = n + ' / 6';
+  $('countTxt').textContent = n + ' / ' + BAYS.length;
 }
 
 function shownCar(){
@@ -690,7 +709,7 @@ function renderStage(anim){
     }
   }
   const occupied = !!state.cars[no];
-  $('bayState').textContent = occupied ? 'Occupied' : (state.draft ? 'Tuning' : 'Empty bay');
+  $('bayState').textContent = 'B' + (levelOf(state.cur) + 1) + ' · ' + (occupied ? 'Occupied' : (state.draft ? 'Tuning' : 'Empty bay'));
   const showEmpty = !car && !state.draft;
   $('empty').hidden = !showEmpty;
   $('emptyNo').textContent = no;
@@ -743,8 +762,9 @@ function select(i){
   state.cur = (i + BAYS.length) % BAYS.length;
   state.confirmLeave = false;
   render(false);
-  const el = $('bays').children[state.cur];
-  if (el && el.scrollIntoView) el.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
+  const el = $('bays').children[state.cur % PER_LEVEL];
+  const host = $('bays');
+  if (el && host.scrollWidth > host.clientWidth) host.scrollTo({ left: el.offsetLeft - (host.clientWidth - el.clientWidth) / 2, behavior: 'smooth' });
 }
 
 /* ---------- drawer ---------- */
@@ -849,6 +869,7 @@ async function leave(){
 }
 
 /* ---------- input ---------- */
+document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { const lv = +b.dataset.lvl; if (lv !== levelOf(state.cur)) { const first = BAYS.findIndex((no, i) => levelOf(i) === lv && !state.cars[no]); select(first >= 0 ? first : lv * PER_LEVEL); } }));
 $('prev').addEventListener('click', () => select(state.cur - 1));
 $('next').addEventListener('click', () => select(state.cur + 1));
 $('parkBtn').addEventListener('click', () => openDrawer(false));
