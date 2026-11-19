@@ -29,10 +29,14 @@ button,input,select{font:inherit;color:inherit}
 .bg{position:absolute;inset:-2%;width:104%;height:104%;object-fit:cover;object-position:50% 46%;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform 1.4s cubic-bezier(.2,.8,.2,1)}
 .bg.on{opacity:1;transform:scale(1)}
 .bg.b2{filter:sepia(.35) saturate(1.5) hue-rotate(-8deg) brightness(.92)}
-.levels{flex:none;display:flex;flex-direction:column;gap:4px}
-.lvl{width:56px;height:36px;border:0;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;font-family:var(--f-display);font-size:24px;line-height:1;padding-top:3px;color:var(--ink-dim)}
-.lvl[aria-pressed="true"]{background:var(--ink);color:var(--void);box-shadow:none}
-.lvl .cnt{display:none}
+.bg.b3{filter:sepia(.55) hue-rotate(168deg) saturate(2.3) brightness(.86)}
+.dockmid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px}
+.levels{display:flex;gap:6px}
+.lvl{display:inline-flex;align-items:center;gap:8px;min-width:84px;height:44px;padding:0 14px;border:0;background:var(--panel);backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;color:var(--ink-dim);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.lvl b{font-family:var(--f-display);font-size:26px;font-weight:600;line-height:1;padding-top:3px;color:var(--ink)}
+.lvl span{font-size:12px;font-weight:600;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.lvl[aria-pressed="true"]{background:var(--ink);box-shadow:none}
+.lvl[aria-pressed="true"] b,.lvl[aria-pressed="true"] span{color:var(--void)}
 .shade{position:absolute;inset:0;pointer-events:none;background:
   radial-gradient(120% 80% at 50% 45%,transparent 40%,rgba(0,0,0,.55) 100%),
   linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 18%,transparent 62%,rgba(0,0,0,.82) 100%)}
@@ -118,7 +122,7 @@ button,input,select{font:inherit;color:inherit}
 .bay[aria-current="true"]{background:var(--hazard);color:var(--hazard-ink);box-shadow:none;transform:translateY(-6px)}
 .bay[aria-current="true"] .st{color:var(--hazard-ink)}
 .bay[aria-current="true"] .pip{box-shadow:inset 0 0 0 1.5px var(--hazard-ink)}
-.hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 104px);transform:translateX(-50%);display:flex;gap:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap;pointer-events:none}
+.hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 156px);transform:translateX(-50%);display:flex;gap:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap;pointer-events:none}
 
 /* tuning drawer */
 .chipbtn{border:0;color:var(--ink);cursor:pointer;min-height:44px}
@@ -164,7 +168,7 @@ button,input,select{font:inherit;color:inherit}
 @media (max-width:760px){
   .bayno{top:calc(env(safe-area-inset-top,0px) + 84px)}
   .bayno .n{font-size:84px}
-  .spec{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 106px);right:max(16px,env(safe-area-inset-right,0px));left:max(16px,env(safe-area-inset-left,0px));width:auto;padding:14px 16px;gap:10px}
+  .spec{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 158px);right:max(16px,env(safe-area-inset-right,0px));left:max(16px,env(safe-area-inset-left,0px));width:auto;padding:14px 16px;gap:10px}
   .spec .model{font-size:38px}
   .spec dl{display:none}
   .carwrap{width:112vw;margin-left:-56vw;bottom:41%}
@@ -183,6 +187,7 @@ button,input,select{font:inherit;color:inherit}
   .seg{grid-template-columns:repeat(auto-fit,minmax(58px,1fr))}
   .drawer{width:100%}
 }
+@media (max-height:760px) and (min-width:761px){.hint{display:none}.empty{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -201,6 +206,12 @@ button,input,select{font:inherit;color:inherit}
     <img class="bg b2" alt="" src="bays/bay10.jpg" data-bay="10" loading="lazy">
     <img class="bg b2" alt="" src="bays/bay11.jpg" data-bay="11" loading="lazy">
     <img class="bg b2" alt="" src="bays/bay12.jpg" data-bay="12" loading="lazy">
+    <img class="bg b3" alt="" src="bays/bay13.jpg" data-bay="13" loading="lazy">
+    <img class="bg b3" alt="" src="bays/bay14.jpg" data-bay="14" loading="lazy">
+    <img class="bg b3" alt="" src="bays/bay15.jpg" data-bay="15" loading="lazy">
+    <img class="bg b3" alt="" src="bays/bay16.jpg" data-bay="16" loading="lazy">
+    <img class="bg b3" alt="" src="bays/bay17.jpg" data-bay="17" loading="lazy">
+    <img class="bg b3" alt="" src="bays/bay18.jpg" data-bay="18" loading="lazy">
     <div class="flicker"></div>
     <div class="carwrap" id="carwrap" role="img" aria-label=""></div>
     <div class="shade"></div>
@@ -233,8 +244,10 @@ button,input,select{font:inherit;color:inherit}
 
   <nav class="dock" aria-label="Bays">
     <button class="nav" id="prev" type="button" aria-label="Previous bay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="levels" role="group" aria-label="Level"><button class="lvl" type="button" data-lvl="0" aria-pressed="true" aria-label="Level B1">B1</button><button class="lvl" type="button" data-lvl="1" aria-pressed="false" aria-label="Level B2">B2</button></div>
-    <div class="bays" id="bays"></div>
+    <div class="dockmid">
+      <div class="levels" id="levels" role="group" aria-label="Level"></div>
+      <div class="bays" id="bays"></div>
+    </div>
     <button class="nav" id="next" type="button" aria-label="Next bay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
   </nav>
 
@@ -298,7 +311,7 @@ button,input,select{font:inherit;color:inherit}
 </html>
 <script>
 (() => {
-const BAYS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+const BAYS = Array.from({ length: 18 }, (_, i) => String(i + 1).padStart(2, '0'));
 const PER_LEVEL = 6;
 const levelOf = (i) => Math.floor(i / PER_LEVEL);
 const PAINTS = [
@@ -662,7 +675,11 @@ function renderBays(){
   const host = $('bays');
   host.innerHTML = '';
   const lv = levelOf(state.cur);
-  document.querySelectorAll('.lvl').forEach(b => b.setAttribute('aria-pressed', +b.dataset.lvl === lv ? 'true' : 'false'));
+  const levels = Math.ceil(BAYS.length / PER_LEVEL);
+  $('levels').innerHTML = Array.from({ length: levels }, (_, k) => {
+    const n = BAYS.filter((no, i) => levelOf(i) === k && state.cars[no]).length;
+    return `<button class="lvl" type="button" data-lvl="${k}" aria-pressed="${k === lv}" aria-label="Level B${k + 1}, ${n} of ${PER_LEVEL} parked"><b>B${k + 1}</b><span>${n}/${PER_LEVEL}</span></button>`;
+  }).join('');
   $('levelSub').textContent = 'Level B' + (lv + 1) + ' · ' + BAYS.length + ' bays';
   BAYS.forEach((no,i) => {
     if (levelOf(i) !== lv) return;
@@ -869,7 +886,7 @@ async function leave(){
 }
 
 /* ---------- input ---------- */
-document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { const lv = +b.dataset.lvl; if (lv !== levelOf(state.cur)) { const first = BAYS.findIndex((no, i) => levelOf(i) === lv && !state.cars[no]); select(first >= 0 ? first : lv * PER_LEVEL); } }));
+$('levels').addEventListener('click', e => { const b = e.target.closest('.lvl'); if (!b) return; { const lv = +b.dataset.lvl; if (lv !== levelOf(state.cur)) { const first = BAYS.findIndex((no, i) => levelOf(i) === lv && !state.cars[no]); select(first >= 0 ? first : lv * PER_LEVEL); } } });
 $('prev').addEventListener('click', () => select(state.cur - 1));
 $('next').addEventListener('click', () => select(state.cur + 1));
 $('parkBtn').addEventListener('click', () => openDrawer(false));

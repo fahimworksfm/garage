@@ -1,7 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import { createHash, timingSafeEqual } from "node:crypto";
 
-const BAYS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+const BAYS = Array.from({ length: 18 }, (_, i) => String(i + 1).padStart(2, "0"));
 const BODIES = ["coupe", "sedan", "hatch", "suv", "truck"];
 const FINISHES = ["gloss", "matte", "metal"];
 const GLOWS = ["none", "cyan", "magenta", "lime", "amber"];
