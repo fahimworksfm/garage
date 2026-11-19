@@ -45,7 +45,15 @@ function checkAdmin(req) {
 
 export default async (req, context) => {
   const store = getStore({ name: "garage-bays", consistency: "strong" });
+  const photos = getStore({ name: "garage-photos", consistency: "strong" });
   const seg = new URL(req.url).pathname.split('/').filter(Boolean);
+
+  if (seg[0] === 'api' && seg[1] === 'photos') {
+    if (req.method !== "GET" || !BAYS.includes(seg[2])) return json({ error: "Not found." }, 404);
+    const data = await photos.get(seg[2], { type: "arrayBuffer" });
+    if (!data) return json({ error: "No photo." }, 404);
+    return new Response(data, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
+  }
   const no = seg[0] === 'api' && seg[1] === 'bays' ? seg[2] : undefined;
   const key = clean(req.headers.get("x-driver-key"), 64);
   const admin = checkAdmin(req);
@@ -65,17 +73,29 @@ export default async (req, context) => {
     try { body = await req.json(); } catch { return json({ error: "Send the car as JSON." }, 400); }
     const car = sanitize(body || {});
     if (!car.tag || !car.make || !car.model) return json({ error: "Add your name, make and model." }, 400);
+    let photo = null;
+    if (typeof body.photo === "string") {
+      if (body.photo.length > 900_000 || !/^[A-Za-z0-9+/=]+$/.test(body.photo)) return json({ error: "That photo is too large." }, 413);
+      photo = Buffer.from(body.photo, "base64");
+      if (photo.length < 1000 || photo[0] !== 0xff || photo[1] !== 0xd8) return json({ error: "Photos must be JPEG images." }, 400);
+    }
+    const now = Date.now();
     const existing = await store.getWithMetadata(no, { type: "json" });
     if (existing) {
       if (existing.data?.key !== key) return json({ error: "Someone else is parked in this bay." }, 409);
-      const next = { ...car, key, parkedAt: existing.data.parkedAt || Date.now() };
+      const photoV = photo ? now : body.removePhoto ? 0 : existing.data.photo || 0;
+      const next = { ...car, photo: photoV, key, parkedAt: existing.data.parkedAt || now };
       const res = await store.setJSON(no, next, { onlyIfMatch: existing.etag });
       if (res && res.modified === false) return json({ error: "The bay changed. Try again." }, 409);
+      if (photo) await photos.set(no, photo);
+      else if (body.removePhoto) await photos.delete(no);
       return json({ car: publicView(next, key) });
     }
-    const next = { ...car, key, parkedAt: Date.now() };
+    const next = { ...car, photo: photo ? now : 0, key, parkedAt: now };
     const res = await store.setJSON(no, next, { onlyIfNew: true });
     if (res && res.modified === false) return json({ error: "Someone just took this bay." }, 409);
+    if (photo) await photos.set(no, photo);
+    else await photos.delete(no);
     return json({ car: publicView(next, key) }, 201);
   }
 
@@ -84,10 +104,11 @@ export default async (req, context) => {
     if (!existing) return json({ ok: true });
     if (existing.key !== key && !admin) return json({ error: "Only the driver can pull this car out." }, 403);
     await store.delete(no);
+    await photos.delete(no);
     return json({ ok: true });
   }
 
   return json({ error: "Method not allowed." }, 405);
 };
 
-export const config = { path: ["/api/bays", "/api/bays/:no"] };
+export const config = { path: ["/api/bays", "/api/bays/:no", "/api/photos/:no"] };
